@@ -1,0 +1,1 @@
+D:\\aueb-bioasq7-master\\Index\\home\\document_retrieval\\galago-3.10-bin\\bin\\galago batch-search --index=D:\\aueb-bioasq7-master\\Index\\home\\document_retrieval\\galago-3.10-bin\\bin\\pubmed_only_abstract_galago_index --verbose=False --requested=100 --scorer=bm25 --defaultTextPart=postings.krovetz --mode=threaded trainq_out.json > train_bm25_retrieval.txt

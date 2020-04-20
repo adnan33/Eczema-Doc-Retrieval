@@ -1,0 +1,1 @@
+python Models/extract_submition_w2v_jpdrmm.py interim_resources/sample.json interim_resources/bioasq_bm25_top100.sample.pkl interim_resources/bioasq_bm25_docset_top100.sample.pkl Outputs/sample_output/

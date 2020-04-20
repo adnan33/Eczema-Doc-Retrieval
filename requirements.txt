@@ -1,0 +1,14 @@
+nltk==3.4
+numpy==1.15.4
+tqdm==4.28.1
+gensim==3.6.0
+ijson
+torch==1.1.0
+flask
+flask_cors
+pymongo
+chardet
+joblib
+pytorch-pretrained-bert
+pyspellchecker
+pandas
