@@ -21,6 +21,7 @@ from    difflib                     import SequenceMatcher
 from    collections                 import OrderedDict, defaultdict
 from    pymongo                     import MongoClient
 import subprocess
+from elasticsearch import Elasticsearch
 from flask import  Flask
 from flask import request
 from flask import redirect, url_for, jsonify
