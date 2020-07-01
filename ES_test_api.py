@@ -1205,6 +1205,11 @@ def anazitisi(idd, question):
     f_out                       = 'Interim_resources/sample_out_{}.json'.format(idd)
     preprocess(data,f_out)
     test_data,test_docs=generate_test_data(data, f_out, keep_up_to_year)
+    with open("test_data.txt","w+") as f:
+        f.write(json.dumps(test_data))
+    with open("test_docs.txt","w+") as f:
+        f.write(json.dumps(test_docs))
+   
     '''os.system('runrun.sh')
     #################
     with open(f_in2, 'rb') as f:

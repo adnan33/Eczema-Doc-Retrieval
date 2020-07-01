@@ -144,7 +144,7 @@ def get_first_n_1(qtext, n, max_year=2017):
         }
     }
     print(json.dumps(bod))
-    res         = es.search(index=doc_index, doc_type=map, body=bod, request_timeout=120)
+    res         = es.search(index=doc_index,  body=bod, request_timeout=120)
     print(res)
     return res['hits']['hits']
 
@@ -174,7 +174,7 @@ def get_first_n_2(qtext, n, max_year=2017):
     return res['hits']['hits']
 
 # recall: 0.4150
-def get_first_n_3(qtext, n, max_year=2017):
+def get_first_n_3(qtext, n, max_year=2020):
     tokenized_body  = bioclean_mod(qtext)
     question_tokens = [t for t in tokenized_body if t not in stopwords]
     question        = ' '.join(question_tokens)
@@ -202,10 +202,121 @@ def get_first_n_3(qtext, n, max_year=2017):
     res         = es.search(index=doc_index, body=bod, request_timeout=120)
     print(res)
     return res['hits']['hits']
+# recall: 0.5099327929645772
+def get_multi(qtext,n, max_year=2020):
+    tokenized_body  = bioclean_mod(qtext)
+    question_tokens = [t for t in tokenized_body if t not in stopwords]
+    question        = ' '.join(question_tokens)
+    bod = {
+    "size": n,
+   "query": {
+        "multi_match": {
+            "query": question,
+            "type":       "most_fields",
+            "fields": ["AbstractText","ArticleTitle"]
+        }
+    }
+}
+        
+    res         = es.search(index=doc_index, body=bod, request_timeout=120)
+    #print(res)
+    return res['hits']['hits']
 
+def get_compound(qtext,n, max_year=2020):
+    tokenized_body  = bioclean_mod(qtext)
+    question_tokens = [t for t in tokenized_body if t not in stopwords]
+    question        = ' '.join(question_tokens)
+    bod = {
+        "size": n,
+        "query": {
+            "bool" : {
+                "must": [
+                    {
+                        "range": {
+                            "DateCreated": {
+                                "gte": "1800",
+                                "lte": str(max_year),
+                                "format": "dd/MM/yyyy||yyyy"
+                            }
+                        }
+                    }
+                ],
+                "should": [
+                    {"match": {"AbstractText": question}},
+                    {"match": {"ArticleTitle": question}},
 
+                    {
+                        "multi_match": {
+                            "query": question,
+                            "type": "most_fields",
+                            "fields": ["AbstractText", "ArticleTitle"],
+                            "operator": "and"
+                        }
+                    }
+                    ,
+                    {
+                        "range": {
+                            "ArticleDate": {
+                                "gte": "1800",
+                                "lte": str(max_year),
+                                "format": "dd/MM/yyyy||yyyy"
+                            }
+                        }
+                    }
+                ],
+                "minimum_should_match": 1,
+            }
+        }
+    }
+    
+        
+    res = es.search(index=doc_index, body=bod, request_timeout=120)
+    #print(res)
+    return res['hits']['hits']
+# recall: 0.5138480484607151   
+def get_compound_2(qtext,n, max_year=2020):
+    tokenized_body  = bioclean_mod(qtext)
+    question_tokens = [t for t in tokenized_body if t not in stopwords]
+    question        = ' '.join(question_tokens)
+    bod = {
+        "size": n,
+        "query": {
+            "bool" : {
+                
+                "should": [
+                    {"match": {"AbstractText": question}},
+                    {"match": {"ArticleTitle": question}},
+                    {
+                        "range": {
+                            "DateCreated": {
+                                "gte": "1800",
+                                "lte": str(max_year),
+                                "format": "dd/MM/yyyy||yyyy"
+                            }
+                        }
+                    }
+                    ,
+                    {
+                        "range": {
+                            "ArticleDate": {
+                                "gte": "1800",
+                                "lte": str(max_year),
+                                "format": "dd/MM/yyyy||yyyy"
+                            }
+                        }
+                    }
+                ],
+                "minimum_should_match": 1,
+            }
+        }
+    }
+    
+        
+    res = es.search(index=doc_index, body=bod, request_timeout=120)
+    #print(res)
+    return res['hits']['hits']
 es = Elasticsearch(
-   ['54.191.105.177:9200'],
+   ['localhost:9200'],
     verify_certs        = True,
     timeout             = 150,
     max_retries         = 10,
@@ -228,11 +339,13 @@ for q in tqdm(dev_data['queries']):
     #####
     #results         = get_first_n_20(qtext, 100,2019)
     #
-    results         = get_first_n_1(qtext, 100,2019)
+    #results         = get_first_n_1(qtext, 100,2019)
     #results         = get_first_n_2(qtext, 100,2019)
-    #results         = get_first_n_3(qtext, 100,2019)
+    #results         = get_first_n_3(qtext, 100,2020)
+    #results         = get_multi(qtext, 100,2020)
+    results         = get_compound_2(qtext, 100,2020)
     #####
-    print(results)
+    
     retr_pmids      = [t['_source']['pmid'] for t in results]
     #####
     rel_ret         = sum([1 if (t in q['relevant_documents']) else 0 for t in retr_pmids])
