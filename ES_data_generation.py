@@ -56,22 +56,16 @@ def get_compound(qtext, n, max_year=2020):
     
     question = qtext
     #print(question)
-    bod = {
+    bod ={
         "size": n,
         "query": {
-            "bool": {
+            "bool" : {
+                
                 "should": [
                     {"match": {"AbstractText": question}},
                     {"match": {"ArticleTitle": question}},
-                    {
-                        "range": {
-                            "DateCreated": {
-                                "gte": "1800",
-                                "lte": str(max_year),
-                                "format": "dd/MM/yyyy||yyyy"
-                            }
-                        }
-                    },
+
+                 
                     {
                         "range": {
                             "ArticleDate": {
@@ -80,13 +74,22 @@ def get_compound(qtext, n, max_year=2020):
                                 "format": "dd/MM/yyyy||yyyy"
                             }
                         }
+                    },
+                    {
+                        "range": {
+                            "DateCreated": {
+                                "gte": "1800",
+                                "lte": str(max_year),
+                                "format": "dd/MM/yyyy||yyyy"
+                            }
+                        }
                     }
                 ],
-                "minimum_should_match": 1,
+                "minimum_should_match": 1
             }
         }
     }
-
+    bod=json.dumps(bod)
     res = es.search(index=doc_index, body=bod, request_timeout=120)
     #print(json.dumps(res))
     return res['hits']['hits']

@@ -1,4 +1,3 @@
-
 import sys
 from importlib import reload
 if sys.version[0] == '2':
@@ -19,8 +18,7 @@ from    gensim.models.keyedvectors  import KeyedVectors
 from    nltk.tokenize               import sent_tokenize
 from    difflib                     import SequenceMatcher
 from    collections                 import OrderedDict, defaultdict
-from    pymongo                     import MongoClient
-import subprocess
+
 from elasticsearch import Elasticsearch
 from flask import  Flask
 from flask import request
@@ -41,13 +39,13 @@ except LookupError:
 finally:
     stopwords   = nltk.corpus.stopwords.words("english")
     
-doclimit=10
+doclimit=10 #change this variable to determine how many 
 
 
 app = Flask(__name__)
 CORS(app)
 doc_index = 'pubmed_abstracts_index_0_1'
-map = "pubmed_abstracts_mapping_0_1"
+
 
 
 def get_multi(qtext, n, max_year=2020):
@@ -204,7 +202,7 @@ def create_data(results,qbody,id):
     
     return data
 
-def generate_data_es(data, keep_up_to_year):
+def get_documents_for_model(data, keep_up_to_year):
     qtext = data["questions"][0]["body"]
     qid = data["questions"][0]["id"]
     results = get_compound(qtext, 100, keep_up_to_year)    
@@ -219,73 +217,7 @@ es = Elasticsearch(['localhost:9200'],
     retry_on_timeout    = True
 )
 
-def preprocess(data, path_out):
-    
-    ############
-    
-    queries = data['questions']
-    ############
-    q_array = []
-    for query in queries:
-        ############
-        tokenized_body = bioclean_mod(query['body'])
-        tokenized_body = [t for t in tokenized_body if t not in stopwords]
-        ############
-        body = ' '.join(tokenized_body)
-        q_array.append({"text": body, "number": query["id"]})
-    with open(path_out, 'w+') as outfile:
-        outfile.write(json.dumps({"queries": [ob for ob in q_array]}, indent=4))
-    
 
-def create_docset(docs_needed):
-    print("Retrieving text for {0} documents".format(len(docs_needed)))
-    docset = {}
-    client = MongoClient('localhost', 27017)
-    db = client.pubmedBaseline2018
-    collection = db.articles
-    docs_needed = list(docs_needed)
-    i = 0
-    step = 10000
-    pbar = tqdm(total=len(docs_needed))
-    while i <= len(docs_needed):
-        doc_cursor = collection.find({"pmid": {"$in": docs_needed[i:i + step]}})
-        for doc in doc_cursor:
-            del doc['_id']
-            docset[doc['pmid']] = json.loads((json.dumps(doc)))
-        i += step
-        pbar.update(step)
-    pbar.close()
-    not_found = set(docs_needed) - set(docset.keys())
-    #print(list(not_found)[:100])
-    #print(len(not_found))
-    return docset
-
-def create_doc_subset(docset, ret_docs_needed, rel_docs_needed):
-    doc_subset = {}
-    for doc_id in ret_docs_needed:
-        doc_subset[doc_id] = docset[doc_id]
-    for doc_id in rel_docs_needed:
-        try:
-            doc_subset[doc_id] = docset[doc_id]
-        except KeyError:
-            pass
-            #print('Relevant doc {0} not found in docset.'.format(doc_id))
-    return doc_subset
-
-def add_normalized_scores(q_ret):
-    for q in q_ret:
-        scores = [t[1] for t in q_ret[q]]
-        if np.std(scores) == 0:
-            pass
-            #print(q)
-        scores_mean = np.mean(scores)
-        scores_std = np.std(scores)
-        if scores_std != 0:
-            norm_scores = (scores - scores_mean) / scores_std
-        else:
-            norm_scores = scores
-        for i in range(len(q_ret[q])):
-            q_ret[q][i] += (norm_scores[i],)
 
 def remove_recent_years(q_ret, keep_up_to_year, docset):
     new_q_ret = defaultdict(list)
@@ -304,115 +236,7 @@ def remove_recent_years(q_ret, keep_up_to_year, docset):
     return new_q_ret
 
 
-def call_galago(json_dir):
-    
-    command=['Index\\home\\document_retrieval\\galago-3.10-bin\\bin\\galago',
-             'threaded-batch-search',
-             '--index=Index\\home\\document_retrieval\\galago-3.10-bin\\bin\\pubmed_only_abstract_galago_index'
-             ,'--verbose=False','--requested=25','--scorer=bm25','--defaultTextPart=postings.krovetz',
-             '--mode=threaded', json_dir]
-    rets=subprocess.Popen(command,stdout=subprocess.PIPE,shell=True)
-    
-    out,err=rets.communicate()
-    
-    lines       = out.decode("utf-8").split('\n')
-    retrieval_results = defaultdict(list)
-    for line in lines:
-        if(len(line)>0):
-            line_splits = line.split()
-            q_id = line_splits[0]
-            doc_id = line_splits[2]
-            bm25_score = float(line_splits[4])
-            retrieval_results[q_id].append((doc_id, bm25_score))
-            
-    return dict(retrieval_results)
-    
 
-
-def load_q_rels(data):
-    qrels = defaultdict(list)
-    n_qrels = defaultdict(int)
-    for i in range(len(data['questions'])):
-        q_id = data['questions'][i]['id']
-        rel_docs = set([doc.split('/')[-1] for doc in data['questions'][i]['documents']])
-        qrels[q_id] = rel_docs
-        n_qrels[q_id] = len(rel_docs)
-    return dict(qrels), dict(n_qrels)
-def load_q_text(data):
-    q_text = {}
-    for i in range(len(data['questions'])):
-        q_id = data['questions'][i]['id']
-        text = data['questions'][i]['body']
-        q_text[q_id] = text
-    return dict(q_text)
-def generate_test_data(data, json_dir, keep_up_to_year):
-    q_ret = call_galago(json_dir)
-    q_rel, n_qrels = load_q_rels(data)
-    
-    q_text = load_q_text(data)
-    #
-    docs_needed = set()
-    for q_id in q_rel:
-        docs_needed.update(q_rel[q_id])
-    for q_id in q_ret:
-        docs_needed.update([d[0] for d in q_ret[q_id]])
-    
-    docset = create_docset(docs_needed)
-    #
-    q_ret = remove_recent_years(q_ret, keep_up_to_year, docset)
-    #
-    for k in [100]:
-        #print(k)
-        #
-        for q in q_ret:
-            q_ret[q] = q_ret[q][:k]
-        add_normalized_scores(q_ret)
-       
-        #
-        queries = []
-        retrieved_documents_set = set()
-        relevant_documents_set = set()
-        for q in q_ret:
-            query_data = {}
-            query_data['query_id'] = q
-            query_data['query_text'] = q_text[q]
-            query_data['relevant_documents'] = sorted(list(q_rel[q]))
-            query_data['num_rel'] = n_qrels[q]
-            query_data['retrieved_documents'] = []
-            rank = 0
-            n_ret_rel = 0
-            n_ret = 0
-            for t in q_ret[q][:k]:
-                n_ret += 1
-                doc_id = t[0]
-                bm25_score = t[1]
-                norm_bm25_score = t[2]
-                rank += 1
-                #
-                retrieved_documents_set.add(doc_id)
-                relevant_documents_set.update(q_rel[q])
-                #
-                doc_data = {}
-                doc_data['doc_id'] = doc_id
-                doc_data['rank'] = rank
-                doc_data['bm25_score'] = bm25_score
-                doc_data['norm_bm25_score'] = norm_bm25_score
-                if doc_id in q_rel[q]:
-                    doc_data['is_relevant'] = True
-                    n_ret_rel += 1
-                else:
-                    doc_data['is_relevant'] = False
-                query_data['retrieved_documents'].append(doc_data)
-                print(query_data['relevant_documents'])
-                print(query_data['retrieved_documents'])
-            query_data['num_ret'] = n_ret
-            query_data['num_rel_ret'] = n_ret_rel
-            queries.append(query_data)
-            data = {'queries': queries}
-        
-        # Create doc subset for the top-k documents (to avoid many queries to mongodb for each k value)
-        doc_subset = create_doc_subset(docset, retrieved_documents_set, relevant_documents_set)
-    return data,doc_subset
 # Compute the term frequency of a word for a specific document
 def tf(term, document):
     tf = 0
@@ -500,7 +324,7 @@ def RemoveBadYears(data, doc_text, train):
       # Skip 2017/2018 docs always. Skip 2016 docs for training.
       # Need to change for final model - 2017 should be a train year only.
       # Use only for testing.
-      if year == '2017' or year == '2018' or (train and year == '2016'):
+      if year == '2020' or year == '2021' or (train and year == '2020'):
       #if year == '2018' or (train and year == '2017'):
         del data['queries'][i]['retrieved_documents'][j]
       else:
@@ -1362,8 +1186,8 @@ def check_data(data):
         return None
     return data
 
-def anazitisi(idd, question):
-    data = {
+def get_top_docs(idd, question):
+    query = {
         "questions": [
             {
                 "body"      : question,
@@ -1372,32 +1196,8 @@ def anazitisi(idd, question):
             }
         ]
     }
-    #################
-    #with open(f_in1, 'w') as fp:
-     #   json.dump(ddd, fp)
-    #################
-    
-    # print(' '.join(command))
-    #res = subprocess.run(command, stdout=subprocess.PIPE, shell=False)
-    f_out                       = 'Interim_resources/sample_out_{}.json'.format(idd)
-    #preprocess(data,f_out)
-    #test_data,test_docs=generate_test_data(data, f_out, keep_up_to_year)
-    test_data,test_docs=generate_data_es(data, keep_up_to_year)
-    with open("test_op/test_data_2.json","w+") as f:
-        f.write(json.dumps(test_data))
-    with open("test_op/test_docs_2.json","w+") as f:
-        f.write(json.dumps(test_docs))
-   
-    '''os.system('runrun.sh')
-    #################
-    with open(f_in2, 'rb') as f:
-        test_data = pickle.load(f)
-    #################
-    with open(f_in3, 'rb') as f:
-        test_docs = pickle.load(f)
-    #################'''
-    #os.remove(f_out)
-    ret = {'results': get_one(test_data, test_docs)}
+    doc_metadata,docs=get_documents_for_model(query, keep_up_to_year)
+    ret = {'results': get_one(doc_metadata,docs)}
     return ret
 
 def preprocess_input(data):
@@ -1420,7 +1220,7 @@ def preprocess_input(data):
     elif(data.lower().find("eczema")==-1 and data.lower().find("atopic dermatitis")):
         data=data[:-1]
         return data+" in atopic dermatitis ?"
-@app.route('/search', methods=['GET', 'POST'])
+@app.route('/get_eczema_docs', methods=['GET', 'POST'])
 def data_searching():
     try:
         #app.logger.debug("JSON received...")
@@ -1437,7 +1237,7 @@ def data_searching():
                     app.logger.debug(ret)
                     return jsonify(ret)
                 else:
-                    ret = anazitisi(mydata['id'], mydata['question'])
+                    ret = get_top_docs(mydata['id'], mydata['question'])
                     ret['request'] = mydata
                     return jsonify(ret)
             else:
@@ -1454,7 +1254,7 @@ def data_searching():
 
 ###########################################################
 use_cuda                    = torch.cuda.is_available()
-keep_up_to_year             = 2018
+keep_up_to_year             = 2020
 ###########################################################
 w2v_bin_path                = 'Data/PretrainedWeightsAndVectors/pubmed2018_w2v_30D.bin'
 idf_pickle_path             = 'Data/PretrainedWeightsAndVectors/idf.pkl'
@@ -1495,5 +1295,6 @@ idf, max_idf = load_idfs(idf_pickle_path, wv.keys())
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=9250, debug=True, threaded=True)
+
 
 

@@ -5,9 +5,9 @@ from builtins import enumerate
 import time
 start_time = time.time()
 
-url = "http://127.0.0.1:9250/jpdrmm/search"
-response_dir=r"D:\aueb-bioasq7-master\Outputs\Responses\w2v-1_responses\\"
-qdir=r"D:\aueb-bioasq7-master\interim_resources\Eczema questions for BERT-JPDRMM.csv"
+url = "http://127.0.0.1:9250/get_eczema_docs"
+response_dir=r"D:\aueb-bioasq7-master\Outputs\Responses\ES-response-Psoriasis2\\"
+qdir=r"D:\aueb-bioasq7-master\interim_resources\psoriasis_ques.csv"
 meta=[]
 
 def do_request(data):
@@ -25,7 +25,6 @@ ids=qdf[0].values
 for i,qs in enumerate(ques):
     data = {
     'question'  : qs,
-    # "question"  : 'Is smoking related to blindness ?',
     'id'        : str(ids[i]),
     }
     print(data)
@@ -34,5 +33,5 @@ for i,qs in enumerate(ques):
     
 meta.append((time.time() - start_time)/3600)
 metadf = pd.DataFrame(data={"Time per call(min)": meta})
-metadf.to_csv("w2v-api_time.csv", sep=',')
+metadf.to_csv("ES2-api_time.csv", sep=',')
 print("questions took {:.6f} hours".format((time.time() - start_time)/3600))
