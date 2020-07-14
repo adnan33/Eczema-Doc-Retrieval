@@ -61,9 +61,9 @@ We fine-tuned the POSIT-DRMM model with our hand crafted dataset on eczema quest
 	4. The Application and Database is depolyed using DOCKER-COMPOSE and the base docker image is [tiangolo/uwsgi-nginx-flask/python3.6-2020-05-07](https://github.com/tiangolo/uwsgi-nginx-flask-docker) .
   
 - **Skin Conditions Covered:**
-		- [x] Eczema :thumbsup:
-        - [ ] Psoriasis (Will be implemented soon) :point_left:
-		- [ ] Acne (Will be implemented soon) :point_left:
+	- [x] Eczema :thumbsup:
+    - [ ] Psoriasis (Will be implemented soon) :point_left:
+	- [ ] Acne (Will be implemented soon) :point_left:
 		
 ###### Authored by:
 Md.Adnan Taufique:neckbeard: \

@@ -4,7 +4,7 @@
 
 echo "{}" > ./interim_resources/sample_bm25_retrieval.txt
 
-python queries2galago.py interim_resources/sample.json interim_resources/sample_out.json Data/stopwords.pkl
+#python queries2galago.py interim_resources/sample.json interim_resources/sample_out.json Data/stopwords.pkl
 
 ./galago_idx.bat
 
