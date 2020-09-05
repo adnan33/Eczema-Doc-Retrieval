@@ -49,7 +49,8 @@ We fine-tuned the POSIT-DRMM model with our hand crafted dataset on eczema quest
 	```
   2. The query request is made to the ElasticSearch server with Pubmed index running in the background using ElasticSearch python api and the response has 100 best match pubmed documents based on BM25 score. 
   3. The fetched documents are then restructured into document data and document metadata to be fed into the POSIT-DRMM model reranking and getting most relevant snippets.
-  4. The POSIT-DRMM model them **reranks the fetched documents and gets best relevant snippet from each document.**- **Dataset Description**
+  4. The POSIT-DRMM model them **reranks the fetched documents and gets best relevant snippet from each document.**
+- **Dataset Description**
 	1. **Pubmed Index:** The elasticsearch pubmed index initially had 31 Million documents. The documents with missing AbstractText and ArticleTitle were removed. Finally we have approximately 20 Million of documents. (Use the [Pubmed_Elasticsearch_Index_builder](https://github.com/traindi/tibot-ml-experiments/tree/working/Pubmed_Elasticsearch_Index_builder) scripts and instructions to build/ restore the pubmed index)
 	2. **Original W2V Dataset:**  The W2V model was initially trained on the years 1–6 of the bioasq data cosisting of 2,647 questions.
 	3. **FineTune dataset:** We created our own dataset by initially querying to the original app and then reranking the responses by hand. An additional 422 eczema related query and corresponding documents were added to the original dataset.
@@ -62,7 +63,7 @@ We fine-tuned the POSIT-DRMM model with our hand crafted dataset on eczema quest
   
 - **Skin Conditions Covered:**
 	- [x] Eczema :thumbsup:
-    - [ ] Psoriasis (Will be implemented soon) :point_left:
+    - [x] Psoriasis (Will be implemented soon) :thumbsup:
 	- [ ] Acne (Will be implemented soon) :point_left:
 		
 ###### Authored by:
