@@ -63,7 +63,7 @@ We fine-tuned the POSIT-DRMM model with our hand crafted dataset on eczema quest
   
 - **Skin Conditions Covered:**
 	- [x] Eczema :thumbsup:
-    - [x] Psoriasis (Will be implemented soon) :thumbsup:
+    - [x] Psoriasis :thumbsup:
 	- [ ] Acne (Will be implemented soon) :point_left:
 		
 ###### Authored by:
